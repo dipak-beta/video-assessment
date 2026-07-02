@@ -1918,9 +1918,73 @@ async def stream_analysis(websocket: WebSocket, session_id: str):
             pass
 
 
+async def _resynthesize_after_reanalyze(
+    session_id: str,
+    observations: List[dict],
+    challenging_observations: List[dict],
+    challenging_signals: List[str],
+    revision: str,
+) -> None:
+    """Background task: re-run the Gemini Pro final synthesis so the report's
+    narrative sections (overall_summary, strengths, professional_recommendations,
+    home_program, behaviour_summary, challenging_behaviours, etc.) stay in
+    sync with the newly merged per-domain scores. Never raises — the numeric
+    update the caller already committed remains authoritative if this fails.
+
+    `revision` is the value written to the report doc when the caller scheduled
+    this task. If a newer /reanalyze-domain call has since re-aggregated and
+    scheduled its own synthesis (i.e. the doc's revision has advanced), we skip
+    the write to avoid clobbering fresher narrative with stale content.
+    """
+    try:
+        payload = await _generate_final_report(
+            session_id,
+            observations,
+            challenging_observations=challenging_observations,
+            challenging_signals=challenging_signals,
+        )
+        synth_update = {
+            **payload,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "synthesis_status": "fresh",
+        }
+        # Preserve the freshly aggregated domain scores + low-confidence flags
+        # that the endpoint just wrote — _generate_final_report doesn't touch
+        # these fields but be defensive in case its schema evolves.
+        synth_update.pop("domains", None)
+        synth_update.pop("low_confidence", None)
+        synth_update.pop("low_confidence_videos", None)
+        result = await db.assessment_reports.update_one(
+            {"session_id": session_id, "reanalyze_revision": revision},
+            {"$set": synth_update},
+        )
+        if result.matched_count == 0:
+            logger.info(
+                "Skipped stale re-synthesis write for session %s (revision moved on)",
+                session_id,
+            )
+        else:
+            logger.info("Re-synthesis complete for session %s", session_id)
+    except Exception as e:
+        logger.warning(
+            "Re-synthesis after reanalyze-domain failed for session %s: %s",
+            session_id, e,
+        )
+        # Mark the report so the frontend can surface a "narrative may be
+        # slightly out of date" hint if desired.
+        try:
+            await db.assessment_reports.update_one(
+                {"session_id": session_id, "reanalyze_revision": revision},
+                {"$set": {"synthesis_status": "stale"}},
+            )
+        except Exception:
+            pass
+
+
 @api_router.post("/video-assessment/sessions/{session_id}/reanalyze-domain")
 async def reanalyze_domain(
     session_id: str,
+    background_tasks: BackgroundTasks,
     domain: str = Form(...),
     file: UploadFile = File(...),
 ):
@@ -1988,10 +2052,17 @@ async def reanalyze_domain(
         for pv in merged
         if pv.get("schema_flag") == "schema_failed"
     ]
+    # Bump a revision token every time we re-aggregate so background
+    # synthesis tasks can detect when they've been superseded by a newer
+    # /reanalyze-domain call (e.g. when the frontend re-uploads clips for
+    # several domains back-to-back).
+    revision = uuid.uuid4().hex
     update = {
         "domains": new_observations,
         "low_confidence": bool(schema_failed_videos),
         "low_confidence_videos": schema_failed_videos,
+        "reanalyze_revision": revision,
+        "synthesis_status": "pending",
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.assessment_reports.update_one({"session_id": session_id}, {"$set": update})
@@ -2003,51 +2074,32 @@ async def reanalyze_domain(
     # Video was analysed — delete immediately per privacy policy
     final_path.unlink(missing_ok=True)
 
-    # Re-run the Gemini Pro final synthesis so the narrative sections
-    # (overall_summary, strengths, professional_recommendations, home_program,
-    # behaviour_summary, challenging_behaviours) stay in sync with the newly
-    # merged per-domain scores. If synthesis fails we keep the stale narrative
-    # rather than block the numeric update the user already sees.
+    # Schedule the Gemini Pro final synthesis as a BACKGROUND task so the HTTP
+    # response returns quickly (well under the ingress proxy timeout). The
+    # narrative sections will be refreshed asynchronously; the numeric
+    # per-domain scores the parent sees on the report are already correct
+    # from the aggregation above.
     cb_after = (
         await db.assessment_reports.find_one({"session_id": session_id}, {"_id": 0})
     ) or {}
     cb_block = cb_after.get("challenging_behaviours") or {}
     challenging_observations = cb_block.get("observations") or []
     challenging_signals = cb_block.get("incidental_signals") or []
-    synthesis_stale = False
-    try:
-        report_payload = await _generate_final_report(
-            session_id,
-            new_observations,
-            challenging_observations=challenging_observations,
-            challenging_signals=challenging_signals,
-        )
-        synth_update = {
-            **report_payload,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        # Preserve the freshly aggregated domain scores + low-confidence flags
-        # that we just wrote; _generate_final_report doesn't touch these fields
-        # but be defensive in case its schema evolves.
-        synth_update.pop("domains", None)
-        synth_update.pop("low_confidence", None)
-        synth_update.pop("low_confidence_videos", None)
-        await db.assessment_reports.update_one(
-            {"session_id": session_id}, {"$set": synth_update}
-        )
-    except Exception as e:
-        synthesis_stale = True
-        logger.warning(
-            "Re-synthesis after reanalyze-domain failed for session %s: %s",
-            session_id, e,
-        )
+    background_tasks.add_task(
+        _resynthesize_after_reanalyze,
+        session_id,
+        new_observations,
+        challenging_observations,
+        challenging_signals,
+        revision,
+    )
 
     refreshed = await db.assessment_reports.find_one({"session_id": session_id}, {"_id": 0})
     return {
         "ok": True,
         "domain": domain,
         "report": refreshed,
-        "synthesis_stale": synthesis_stale,
+        "synthesis_status": "pending",
     }
 
 
