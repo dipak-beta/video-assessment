@@ -16,7 +16,7 @@ import ReportActions from "./ReportActions";
  *     bold heading, helper paragraph + action buttons
  *   - scrollable body underneath
  */
-export default function ReportDialog({ open, onClose, report, onLoadDemo, onReportUpdated, analysisRunning, onResumeAnalysis }) {
+export default function ReportDialog({ open, onClose, report, onLoadDemo, onReportUpdated, onOpenReanalyze, analysisRunning, onResumeAnalysis }) {
   const r = report;
   // Derive clipCount + elapsedSec so <ReportActions> can piggyback the
   // "AI took X min vs ~Y clinician" brag line onto the WhatsApp share text.
@@ -113,6 +113,7 @@ export default function ReportDialog({ open, onClose, report, onLoadDemo, onRepo
             report={report}
             onLoadDemo={onLoadDemo}
             onReportUpdated={onReportUpdated}
+            onOpenReanalyze={onOpenReanalyze}
           />
         </div>
       </DialogContent>

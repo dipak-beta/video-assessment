@@ -23,13 +23,13 @@ import {
 } from "lucide-react";
 import { DOMAINS } from "@/data/domains";
 import { VA } from "@/constants/testIds";
-import DomainReuploadButton from "./DomainReuploadButton";
+import { getPendingReuploadDomains } from "./ReuploadDialog";
 import BehaviourSection from "./report-preview/BehaviourSection";
 import DevelopmentalMilestonesSection from "./report-preview/DevelopmentalMilestonesSection";
 import HomeProgramSection from "./report-preview/HomeProgramSection";
 import { retryReportAnalysis } from "@/lib/api";
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const summaries = [
@@ -52,7 +52,7 @@ const DOMAIN_ACCENT = {
   learning_play: { icon: GraduationCap,  bg: "bg-teal-50",    accent: "text-teal-700",    ring: "border-teal-100" },
 };
 
-export default function ReportPreview({ report, onLoadDemo, onReportUpdated }) {
+export default function ReportPreview({ report, onLoadDemo, onReportUpdated, onOpenReanalyze }) {
   const r = report;
   const [retrying, setRetrying] = useState(false);
   // Look up domain-level flags for the reupload button
@@ -60,6 +60,7 @@ export default function ReportPreview({ report, onLoadDemo, onReportUpdated }) {
   const reshootByDomain = Object.fromEntries(
     (r?.reshoot_prompts || []).map((p) => [p.domain, p])
   );
+  const pendingReupload = getPendingReuploadDomains(r);
 
   const onRetry = async () => {
     if (!r?.session_id || r.session_id === "demo" || retrying) return;
@@ -182,6 +183,39 @@ export default function ReportPreview({ report, onLoadDemo, onReportUpdated }) {
                 </div>
               );
             })()}
+
+            {pendingReupload.length > 0 && r?.session_id && r.session_id !== "demo" && (
+              <div
+                data-testid="report-reupload-banner"
+                className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
+                    Strengthen your report
+                  </div>
+                  <div className="mt-0.5 font-heading text-sm sm:text-base font-bold text-kiddo-ink">
+                    {pendingReupload.length} clip{pendingReupload.length === 1 ? "" : "s"} need a fresh take
+                  </div>
+                  <p className="mt-1 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                    Upload a short clip for {pendingReupload.slice(0, 3).map((p) => p.name).join(", ")}
+                    {pendingReupload.length > 3 ? ` and ${pendingReupload.length - 3} more` : ""}
+                    {" "}to unlock those scores. You can attach one, a few, or all — we&apos;ll re-analyse them together.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onOpenReanalyze?.(null)}
+                  data-testid="report-reupload-open"
+                  className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-kiddo-coral hover:bg-kiddo-coralDeep text-white text-sm font-bold shadow-[0_10px_28px_-12px_rgba(255,138,101,0.7)] shrink-0"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload &amp; re-analyse
+                </button>
+              </div>
+            )}
 
             <div className="mt-5 grid sm:grid-cols-3 gap-3 sm:gap-5">
               <div className="rounded-2xl p-4 sm:p-5 bg-orange-50 border border-orange-100">
@@ -358,14 +392,35 @@ export default function ReportPreview({ report, onLoadDemo, onReportUpdated }) {
                               ? "The AI wasn't confident on this clip — a fresh take will strengthen the score."
                               : n.filming_tip ||
                                 "Not enough evidence yet — a short clip focused on this domain will unlock the score.");
+                          if (!r?.session_id || r.session_id === "demo") {
+                            return (
+                              <div className="mt-3 rounded-xl bg-white/80 border border-amber-100 p-2.5 text-[11px] text-amber-900">
+                                {reason}
+                              </div>
+                            );
+                          }
                           return (
-                            <DomainReuploadButton
-                              sessionId={r?.session_id}
-                              domainKey={n.domain}
-                              domainName={n.name || n.domain}
-                              reason={reason}
-                              onReportUpdated={onReportUpdated}
-                            />
+                            <div className="mt-3 rounded-xl bg-white/80 border border-amber-100 p-2.5 flex items-start gap-2.5">
+                              <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                <Upload className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[11px] font-bold text-amber-900">
+                                  Upload a clip for {n.name || n.domain}
+                                </div>
+                                <div className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                                  {reason}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenReanalyze?.(n.domain)}
+                                  data-testid={`domain-reupload-${n.domain}`}
+                                  className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-kiddo-coral hover:bg-kiddo-coralDeep text-white text-[11px] font-bold transition-colors"
+                                >
+                                  <Upload className="w-3.5 h-3.5" /> Record & upload clip
+                                </button>
+                              </div>
+                            </div>
                           );
                         })()}
                       </div>

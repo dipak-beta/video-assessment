@@ -22,6 +22,7 @@ import TrustCenterDialog from "@/components/video-assessment/TrustCenterDialog";
 import SharedReportDialog from "@/components/video-assessment/SharedReportDialog";
 import AnimatedBackground from "@/components/video-assessment/AnimatedBackground";
 import WelcomePopup from "@/components/video-assessment/WelcomePopup";
+import ReuploadDialog from "@/components/video-assessment/ReuploadDialog";
 
 import { DOMAINS } from "@/data/domains";
 import {
@@ -30,6 +31,7 @@ import {
   deleteUpload,
   startAnalysis,
   getDemoReport,
+  reanalyzeDomain,
 } from "@/lib/api";
 import { VA } from "@/constants/testIds";
 import { scrubBodyLocks } from "@/utils/scrubBodyLocks";
@@ -60,6 +62,17 @@ export default function VideoAssessment() {
   const [activeDomain, setActiveDomain] = useState(null); // currently open DomainDetailDialog
   const [challengingOpen, setChallengingOpen] = useState(false);
   const [challengingSkipped, setChallengingSkipped] = useState(false);
+
+  // --- Batch re-upload / re-analyse flow --------------------------------
+  // Parents can attach fresh clips for one or more "pending" domains from
+  // the Report dialog and re-analyse them together, watching the same
+  // AnalysisOverlay used during the initial pipeline.
+  const [reuploadOpen, setReuploadOpen] = useState(false);
+  const [reuploadFocusDomain, setReuploadFocusDomain] = useState(null);
+  // While true, the AnalysisOverlay is being driven by our own batch
+  // re-analysis loop (not the server-side pipeline), so we disable the
+  // status/report polling by passing sessionId=null into the hook.
+  const [reanalyzing, setReanalyzing] = useState(false);
 
   // --- Single-page dialog routing (Progress / Trust / Shared / Report) ---
   const location = useLocation();
@@ -331,7 +344,7 @@ export default function VideoAssessment() {
     // Keep the overlay open showing completion screen; user clicks "View Report".
   }, []);
   useAnalysisPolling({
-    sessionId,
+    sessionId: reanalyzing ? null : sessionId,
     analyzing,
     analysisMinimised,
     analysisStartedAtRef,
@@ -373,10 +386,131 @@ export default function VideoAssessment() {
 
   const handleCloseOverlay = () => {
     setAnalyzing(false);
+    setReanalyzing(false);
     scrubBodyLocks();
     setTimeout(scrubBodyLocks, 50);
     setTimeout(scrubBodyLocks, 350);
   };
+
+  // --- Batch re-upload handlers ------------------------------------------
+  // Open the shared ReuploadDialog. `domainKey` (optional) scrolls that
+  // row into view + highlights it so per-domain "Upload clip" buttons on
+  // the report can deep-link into the same dialog.
+  const handleOpenReanalyze = useCallback((domainKey) => {
+    setReuploadFocusDomain(domainKey || null);
+    // Close the Report dialog if open so the AnalysisOverlay can render
+    // cleanly on top once the user submits.
+    if (location.pathname === "/report") {
+      navigate("/video-assessment", { replace: true });
+    }
+    // Small delay so ReportDialog's exit animation doesn't collide with
+    // ReuploadDialog's enter animation.
+    setTimeout(() => setReuploadOpen(true), 140);
+  }, [location.pathname, navigate]);
+
+  const handleCloseReanalyze = () => setReuploadOpen(false);
+
+  // Fired by ReuploadDialog with { [domainKey]: File } once the user has
+  // attached one or more fresh clips and clicked "Re-analyse". Closes the
+  // dialog, opens AnalysisOverlay, runs each /reanalyze-domain call
+  // sequentially, then switches the overlay to its completion state.
+  const handleBatchReanalyze = useCallback(async (filesByDomain) => {
+    const entries = Object.entries(filesByDomain || {});
+    if (!sessionId || entries.length === 0) return;
+
+    setReuploadOpen(false);
+    // Feed uploadFiles so LivePoseTracker can preview the actual clips
+    // inside the overlay's left panel (nice touch — parents see the same
+    // video they just attached being "analysed").
+    setUploadFiles(filesByDomain);
+    setReanalyzing(true);
+    setAnalyzing(true);
+    setAnalysisMinimised(false);
+    analysisStartedAtRef.current = Date.now();
+    setStatus({
+      state: "analyzing",
+      progress: 3,
+      step: "Starting re-analysis",
+      uploaded_domains: entries.map(([k]) => k),
+    });
+
+    let latestReport = report;
+    const total = entries.length;
+
+    for (let i = 0; i < entries.length; i += 1) {
+      const [domainKey, file] = entries[i];
+      const stepStart = Math.round((i / total) * 92) + 3;
+      const stepEnd = Math.round(((i + 1) / total) * 92) + 3;
+      const domainName =
+        DOMAINS.find((d) => d.key === domainKey)?.name || domainKey;
+
+      setStatus((prev) => ({
+        ...(prev || {}),
+        state: "analyzing",
+        progress: stepStart,
+        step: `Re-analysing ${domainName} (${i + 1}/${total})`,
+      }));
+
+      try {
+        // Route file upload progress into the overlay's progress bar so it
+        // moves smoothly even for the single-clip case.
+        const { report: refreshed } = await reanalyzeDomain(
+          sessionId,
+          domainKey,
+          file,
+          (pct) => {
+            const blended = stepStart + Math.round((pct / 100) * (stepEnd - stepStart) * 0.9);
+            setStatus((prev) => ({
+              ...(prev || {}),
+              state: "analyzing",
+              progress: Math.min(blended, stepEnd),
+              step: `Uploading ${domainName} (${i + 1}/${total}) — ${pct}%`,
+            }));
+          }
+        );
+        if (refreshed) {
+          latestReport = refreshed;
+          setReport(refreshed);
+        }
+        setStatus((prev) => ({
+          ...(prev || {}),
+          state: "analyzing",
+          progress: stepEnd,
+          step: `${domainName} re-analysed`,
+        }));
+      } catch (err) {
+        const detail = err?.response?.data?.detail;
+        const message =
+          (detail && typeof detail === "object" && detail.message) ||
+          (typeof detail === "string" && detail) ||
+          `Couldn't analyse ${domainName}. Skipping.`;
+        toast.error(message);
+        // Continue with the remaining clips instead of aborting the whole
+        // batch — the parent already invested effort attaching them.
+      }
+    }
+
+    // Persist elapsed for the header brag line on the (refreshed) report.
+    try {
+      const elapsedSec = Math.max(
+        1,
+        Math.floor((Date.now() - (analysisStartedAtRef.current || Date.now())) / 1000)
+      );
+      localStorage.setItem(`va_elapsed_sec:${sessionId}`, String(elapsedSec));
+    } catch (e) {
+      console.debug("Could not persist re-analysis elapsed time:", e);
+    }
+
+    setStatus((prev) => ({
+      ...(prev || {}),
+      state: "complete",
+      progress: 100,
+      step: "Report ready",
+    }));
+    if (latestReport) setReport(latestReport);
+    // Overlay stays open on CompletionView; user clicks "View Report" which
+    // hard-refreshes and restores the updated report via useReportRestore.
+  }, [sessionId, report]);
 
   const handleLoadDemo = async () => {
     try {
@@ -613,6 +747,7 @@ export default function VideoAssessment() {
           report={report}
           onLoadDemo={handleLoadDemo}
           onReportUpdated={(next) => setReport(next)}
+          onOpenReanalyze={handleOpenReanalyze}
           onClose={closeOverlayRoute}
           analysisRunning={analyzing && analysisMinimised}
           onResumeAnalysis={() => {
@@ -629,7 +764,17 @@ export default function VideoAssessment() {
           report={report}
           onViewReport={handleViewReport}
           onClose={handleCloseOverlay}
-          onMinimise={() => setAnalysisMinimised(true)}
+          onMinimise={reanalyzing ? undefined : () => setAnalysisMinimised(true)}
+        />
+
+        {/* Batch re-upload dialog — opened from the Report page when one or
+            more domains still need a fresh clip. */}
+        <ReuploadDialog
+          open={reuploadOpen}
+          report={report}
+          focusDomain={reuploadFocusDomain}
+          onClose={handleCloseReanalyze}
+          onSubmit={handleBatchReanalyze}
         />
 
         {/* Welcome / marketing popup — shown 3s after page load only when no report */}
