@@ -2003,8 +2003,52 @@ async def reanalyze_domain(
     # Video was analysed — delete immediately per privacy policy
     final_path.unlink(missing_ok=True)
 
+    # Re-run the Gemini Pro final synthesis so the narrative sections
+    # (overall_summary, strengths, professional_recommendations, home_program,
+    # behaviour_summary, challenging_behaviours) stay in sync with the newly
+    # merged per-domain scores. If synthesis fails we keep the stale narrative
+    # rather than block the numeric update the user already sees.
+    cb_after = (
+        await db.assessment_reports.find_one({"session_id": session_id}, {"_id": 0})
+    ) or {}
+    cb_block = cb_after.get("challenging_behaviours") or {}
+    challenging_observations = cb_block.get("observations") or []
+    challenging_signals = cb_block.get("incidental_signals") or []
+    synthesis_stale = False
+    try:
+        report_payload = await _generate_final_report(
+            session_id,
+            new_observations,
+            challenging_observations=challenging_observations,
+            challenging_signals=challenging_signals,
+        )
+        synth_update = {
+            **report_payload,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        # Preserve the freshly aggregated domain scores + low-confidence flags
+        # that we just wrote; _generate_final_report doesn't touch these fields
+        # but be defensive in case its schema evolves.
+        synth_update.pop("domains", None)
+        synth_update.pop("low_confidence", None)
+        synth_update.pop("low_confidence_videos", None)
+        await db.assessment_reports.update_one(
+            {"session_id": session_id}, {"$set": synth_update}
+        )
+    except Exception as e:
+        synthesis_stale = True
+        logger.warning(
+            "Re-synthesis after reanalyze-domain failed for session %s: %s",
+            session_id, e,
+        )
+
     refreshed = await db.assessment_reports.find_one({"session_id": session_id}, {"_id": 0})
-    return {"ok": True, "domain": domain, "report": refreshed}
+    return {
+        "ok": True,
+        "domain": domain,
+        "report": refreshed,
+        "synthesis_stale": synthesis_stale,
+    }
 
 
 @api_router.post("/video-assessment/sessions/{session_id}/retry-analysis")
