@@ -1,0 +1,33 @@
+export const HOME = {
+  emergentLink: "home-emergent-link",
+};
+
+export const VA = {
+  page: "video-assessment-page",
+  navHome: "nav-home-link",
+  heroHeading: "hero-heading",
+  ctaStart: "hero-cta-start",
+  ctaLearn: "hero-cta-learn",
+  trustBar: "trust-bar",
+  processTimeline: "process-timeline",
+  uploadDropzone: "upload-dropzone",
+  domainGrid: "domain-grid",
+  domainCard: (key) => `domain-card-${key}`,
+  domainExpand: (key) => `domain-expand-${key}`,
+  domainUpload: (key) => `domain-upload-${key}`,
+  domainRemove: (key) => `domain-remove-${key}`,
+  recordingTips: "recording-tips",
+  aiVisualizer: "ai-visualizer",
+  privacySection: "privacy-section",
+  aiReference: "ai-reference",
+  skeletonAnim: "skeleton-animation",
+  reportPreview: "report-preview",
+  reportLoadDemo: "report-load-demo",
+  reportDownload: "report-download-pdf",
+  faq: "faq-section",
+  faqItem: (i) => `faq-item-${i}`,
+  finalCta: "final-cta",
+  finalCtaBtn: "final-cta-upload-button",
+  runAnalysisBtn: "run-analysis-button",
+  analysisProgress: "analysis-progress",
+};

@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    font-family:
+        "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: #FAFAF7;
+    color: #1e293b;
+    /* Guard against Radix Dialog leaving `pointer-events:none` on body after
+       a stack of dialogs/overlays closes in quick succession (a known issue
+       when a non-Radix overlay opens immediately after a Radix dialog
+       closes, e.g. AnalysisOverlay following PostUploadDialog). Each Radix
+       dialog still manages its own modal layer (DialogContent has
+       pointer-events:auto), so forcing the body to remain interactive is
+       safe and keeps the report page fully clickable. */
+    pointer-events: auto !important;
+}
+
+code {
+    font-family:
+        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222 47% 11%;
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 14 100% 70%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 200 40% 96%;
+        --secondary-foreground: 222 47% 11%;
+        --muted: 210 40% 98%;
+        --muted-foreground: 215 16% 47%;
+        --accent: 14 100% 95%;
+        --accent-foreground: 14 80% 35%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+        --ring: 14 100% 70%;
+        --chart-1: 14 100% 70%;
+        --chart-2: 173 42% 53%;
+        --chart-3: 36 100% 64%;
+        --chart-4: 199 92% 64%;
+        --chart-5: 88 50% 53%;
+        --radius: 1rem;
+    }
+    .dark {
+        --background: 222 47% 8%;
+        --foreground: 210 40% 98%;
+        --card: 222 47% 11%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222 47% 11%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 14 100% 70%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 217 32% 17%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217 32% 17%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 217 32% 17%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62% 45%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 217 32% 17%;
+        --input: 217 32% 17%;
+        --ring: 14 100% 70%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+    h1,
+    h2,
+    h3,
+    h4,
+    h5 {
+        font-family: "Nunito", sans-serif;
+        letter-spacing: -0.01em;
+    }
+}
+
+@layer utilities {
+    .bg-warm-gradient {
+        background-image: radial-gradient(
+                1200px 600px at 10% -10%,
+                rgba(255, 138, 101, 0.12),
+                transparent 60%
+            ),
+            radial-gradient(
+                1000px 600px at 110% 10%,
+                rgba(77, 182, 172, 0.12),
+                transparent 60%
+            ),
+            radial-gradient(
+                800px 600px at 50% 110%,
+                rgba(79, 195, 247, 0.1),
+                transparent 60%
+            ),
+            #ffffff;
+    }
+    .bg-soft-section {
+        background: linear-gradient(180deg, #ffffff 0%, #fafaf9 100%);
+    }
+    .bg-mint-section {
+        background: linear-gradient(180deg, #ffffff 0%, #e0f2f1 100%);
+    }
+    .scroll-fade {
+        mask-image: linear-gradient(
+            to right,
+            transparent,
+            black 5%,
+            black 95%,
+            transparent
+        );
+    }
+    .grain::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+        opacity: 0.4;
+        pointer-events: none;
+        mix-blend-mode: multiply;
+    }
+}
+
+@layer base {
+    [data-debug-wrapper="true"] {
+        display: contents !important;
+    }
+}

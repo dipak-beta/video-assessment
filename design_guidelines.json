@@ -1,0 +1,123 @@
+{
+  "theme_archetype": "Archetype 1 (Organic & Earthy) + Archetype 3 (Pastel & Soft) - Light Theme",
+  "design_philosophy": "A world-class AI video assessment page for pediatric wellness (Kiddo+). White/cream backgrounds with soft pastel accents. Friendly, warm, clinical-yet-trustworthy. Generous whitespace, rounded-3xl cards, soft shadows. No dark tech gradients. Apple + Headspace + Google Material design language.",
+  "typography": {
+    "fonts": {
+      "headings": "Nunito, sans-serif",
+      "body": "DM Sans, sans-serif"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-800",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-800",
+      "h3": "text-xl sm:text-2xl font-bold text-slate-800",
+      "body": "text-base sm:text-lg text-slate-600 leading-relaxed",
+      "labels": "text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-500"
+    },
+    "notes": "Avoid generic Inter. Use Nunito for a friendly, approachable, child-focused feel. DM Sans for highly readable body text."
+  },
+  "colors": {
+    "backgrounds": {
+      "page": "#FFFFFF",
+      "card": "#FFFFFF",
+      "soft_section": "#FAFAF9",
+      "gradient_pastel": "bg-gradient-to-br from-orange-50 via-white to-teal-50"
+    },
+    "text": {
+      "primary": "#1E293B",
+      "secondary": "#475569",
+      "accent": "#F97316"
+    },
+    "brand": {
+      "primary": "#FF8A65",
+      "primary_hover": "#FF7043",
+      "success": "#4DB6AC",
+      "success_light": "#E0F2F1",
+      "warning": "#FFB74D",
+      "warning_light": "#FFF3E0",
+      "danger_light": "#FFEBEE"
+    },
+    "domains": {
+      "attention_and_self_regulation": "#FF6B6B",
+      "emotion_and_behaviour": "#FF8E53",
+      "sensory_processing": "#FFA000",
+      "social_and_communication": "#FFCA28",
+      "gross_motor": "#CDDC39",
+      "fine_motor": "#81C784",
+      "daily_living_skills": "#4DB6AC",
+      "learning_and_play": "#4FC3F7"
+    }
+  },
+  "spacing_and_layout": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "section_spacing": "py-20 lg:py-32",
+    "card_padding": "p-8 md:p-12",
+    "border_radius": "rounded-3xl",
+    "shadows": {
+      "card_default": "shadow-[0_8px_30px_rgb(0,0,0,0.04)]",
+      "card_hover": "shadow-[0_20px_40px_rgb(0,0,0,0.08)]"
+    }
+  },
+  "components": {
+    "hero": {
+      "layout": "Two-column bento style or 60/40 split. Left: Heading, subtext, main CTA. Right: Warm family imagery overlaid with subtle AI UI hints.",
+      "instructions": "Use gradient_pastel for the background. Ensure the CTA button is highly rounded (rounded-full) and uses the brand primary color with a soft glow. Add emoji sparingly."
+    },
+    "trust_bar": {
+      "layout": "Flex row, wrap on mobile, evenly spaced.",
+      "instructions": "Include 5 items: Privacy First, AI Powered, Therapist Guided, Videos Auto Deleted, Report in Minutes. Use Lucide icons matching brand colors."
+    },
+    "process_timeline": {
+      "layout": "Horizontal scrolling or wrapping flex container with 5 steps.",
+      "instructions": "Use Framer Motion to stagger the appearance of each step. Connect steps with a dashed line (SVG or border). Use soft rounded numbering."
+    },
+    "video_upload": {
+      "layout": "Large rounded-3xl dashed border area.",
+      "instructions": "Implement drag-and-drop state. Support MP4/MOV/WEBM, max 50MB. Show progress bar on upload, then video preview with replace/delete options. Add a lock icon to reinforce security."
+    },
+    "domain_cards": {
+      "layout": "Grid of 8 expandable cards (grid-cols-1 md:grid-cols-2).",
+      "instructions": "Each card must use its specific domain color for accents (icons, borders). Default state: Title + short desc. Expanded state: Why, How, Examples, Avoid, Duration, and a dedicated upload area. Use Shadcn Accordion logic or Framer Motion AnimatePresence."
+    },
+    "recording_tips": {
+      "layout": "Side-by-side Do and Don't columns inside a rounded-3xl card.",
+      "instructions": "Use 'success_light' bg for Do, 'danger_light' bg for Don't. Use friendly checkmarks and crosses. Generous p-8 padding."
+    },
+    "ai_analysis_visualizer": {
+      "layout": "Relative container with the 'child playing' image as the base video frame.",
+      "instructions": "Overlay a privacy face mask (blur or soft geometric shape) on the child. Overlay an SVG animated skeleton (using Framer Motion) mapping joints. Add floating labels connected to the skeleton: 'Pose Estimation', 'Movement Analysis', 'Hand Tracking', 'Behaviour Detection', 'Joint Attention', 'Eye Gaze', 'Interaction Mapping', 'Motor Pattern', 'Temporal Behaviour', 'Social Engagement'. Must feel premium."
+    },
+    "privacy_section": {
+      "layout": "Centered layout with green security shield icons.",
+      "instructions": "Reiterate that videos are auto-deleted, encrypted, and privacy is priority. Background can be a very soft mint green."
+    },
+    "report_preview": {
+      "layout": "Bento box style mockup of a report.",
+      "instructions": "Show a large overall score, horizontal bar charts for the 8 domains, and sections for strengths/recommendations. Include a 'Download PDF' button."
+    },
+    "faq": {
+      "layout": "Standard Shadcn accordion.",
+      "instructions": "Remove borders, use soft gray/white backgrounds for accordion items, rounded-2xl padding."
+    }
+  },
+  "media": {
+    "hero_family_recording": {
+      "url": "https://images.unsplash.com/photo-1758687126864-96b61e1b3af0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxwYXJlbnRzJTIwY2hpbGQlMjBsaXZpbmclMjByb29tfGVufDB8fHx8MTc4Mjc1MDEwOXww&ixlib=rb-4.1.0&q=85",
+      "description": "Happy family on a couch, use as hero visual representing home environment. Apply soft rounded mask/border."
+    },
+    "ai_analysis_sample_frame": {
+      "url": "https://images.unsplash.com/photo-1706889949025-2fa85aa8a5d1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwyfHxjaGlsZCUyMHBsYXlpbmclMjBmbG9vcnxlbnwwfHx8fDE3ODI3NTAxMDl8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Child playing on the floor. Use this as the background 'video frame' for the AI Analysis Visualizer."
+    },
+    "pediatric_therapy_trust": {
+      "url": "https://images.unsplash.com/photo-1708687045030-26702e62fc65?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwxfHxwZWRpYXRyaWMlMjB0aGVyYXB5fGVufDB8fHx8MTc4Mjc1MDEwOXww&ixlib=rb-4.1.0&q=85",
+      "description": "Therapist giving high five. Use in the Trust/About section to reinforce clinical backing."
+    }
+  },
+  "animations": {
+    "skeleton_svg": "Use Framer Motion <motion.path> with initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}. For joints, use pulsing <motion.circle>. Map to head, shoulders, elbows, wrists, spine, hips, knees, ankles.",
+    "stagger_cards": "variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { staggerChildren: 0.1 } } }}",
+    "page_load": "Smooth fade in with upward drift for main elements.",
+    "hover_states": "Cards lift slightly (y: -4px) and shadow increases. Buttons scale to 1.05 on hover, 0.95 on tap."
+  },
+  "testing": "All interactive elements MUST include data-testid attributes (e.g., data-testid='upload-video-zone', data-testid='faq-accordion-item', data-testid='domain-card-expand')."
+}
